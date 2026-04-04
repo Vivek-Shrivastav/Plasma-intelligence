@@ -1,0 +1,129 @@
+@import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-serif: 'Libre Baskerville', Georgia, 'Times New Roman', serif;
+  --font-sans:  'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono:  'JetBrains Mono', 'Fira Code', monospace;
+
+  --color-ink:      #1a1a2e;
+  --color-muted:    #4a4a6a;
+  --color-rule:     #d4d0c8;
+  --color-surface:  #fafaf7;
+  --color-paper:    #fff9f0;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Newspaper masthead rule */
+.masthead-rule {
+  border-top: 3px solid var(--color-ink);
+  border-bottom: 1px solid var(--color-ink);
+  padding: 2px 0;
+}
+
+/* Serif headline */
+.headline-serif {
+  font-family: var(--font-serif);
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+/* Drop cap for first paragraph of detailed summaries */
+.drop-cap::first-letter {
+  font-family: var(--font-serif);
+  font-size: 3.5em;
+  font-weight: 700;
+  float: left;
+  line-height: 0.75;
+  margin: 0.1em 0.08em 0 0;
+  color: var(--color-ink);
+}
+
+/* Column rule (newspaper style) */
+.col-rule {
+  border-right: 1px solid var(--color-rule);
+}
+
+/* Importance bar */
+.importance-bar {
+  height: 3px;
+  background: #e5e5e5;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+/* Prose overrides for lit review rendering */
+.prose-plasma {
+  font-family: var(--font-serif);
+  font-size: 1rem;
+  line-height: 1.85;
+  color: var(--color-ink);
+}
+.prose-plasma h1,
+.prose-plasma h2,
+.prose-plasma h3 {
+  font-family: var(--font-serif);
+  font-weight: 700;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+}
+.prose-plasma h2 { font-size: 1.35rem; border-bottom: 1px solid var(--color-rule); padding-bottom: 0.4rem; }
+.prose-plasma h3 { font-size: 1.1rem; }
+.prose-plasma p { margin-bottom: 1.2rem; }
+.prose-plasma strong { font-weight: 700; }
+.prose-plasma em { font-style: italic; }
+.prose-plasma blockquote {
+  border-left: 3px solid var(--color-ink);
+  padding-left: 1rem;
+  color: var(--color-muted);
+  font-style: italic;
+}
+.prose-plasma code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: #f0ede8;
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+.prose-plasma a {
+  color: #1a3fa8;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+
+/* Highlight.js code blocks in lit reviews */
+.hljs {
+  background: #f8f6f2;
+  border-radius: 6px;
+  padding: 1rem;
+  font-size: 0.85rem;
+}
+
+/* Fade-in animation */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-in { animation: fadeIn 0.35s ease forwards; }
+
+/* Page transition */
+.page-enter { opacity: 0; }
+.page-enter-active { opacity: 1; transition: opacity 200ms; }
