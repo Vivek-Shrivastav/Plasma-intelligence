@@ -7,7 +7,7 @@ import os
 from datetime import date
 from typing import Any
 
-import anthropic
+from groq import AsyncGroq
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 

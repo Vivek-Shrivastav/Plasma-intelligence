@@ -8,7 +8,7 @@ import os
 from datetime import date
 from typing import Any
 
-import anthropic
+from groq import AsyncGroq
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from tenacity import retry, stop_after_attempt, wait_exponential
