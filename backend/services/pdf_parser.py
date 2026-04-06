@@ -41,7 +41,7 @@ def extract_figures_from_pdf(pdf_path: Path) -> list[dict[str, Any]]:
     Returns list of dicts with 'data' (PNG bytes), 'page', 'index'.
     """
     try:
-        import fitz  # PyMuPDF
+        # import fitz  # PyMuPDF removed  # PyMuPDF
     except ImportError:
         logger.warning("PyMuPDF not installed — skipping figure extraction")
         return []
