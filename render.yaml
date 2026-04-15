@@ -1,6 +1,7 @@
 services:
   - type: web
     name: plasma-intelligence
+    plan: free
     runtime: python
     rootDir: backend
     buildCommand: pip install -r requirements.txt
