@@ -29,7 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <main>{children}</main>
         <footer className="border-t border-gray-200 mt-16 py-8 text-center text-xs text-gray-400 font-sans">
           <p>Plasma Intelligence · Updated daily at 02:00 UTC · Papers from 18 journals & arXiv</p>
-          <p className="mt-1">Analysis powered by Claude · Not affiliated with any journal publisher</p>
+          <p className="mt-1">Analysis powered by Gemini · Not affiliated with any journal publisher</p>
         </footer>
       </body>
     </html>

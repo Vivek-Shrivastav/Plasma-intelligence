@@ -1,9 +1,9 @@
 """
-Fetches new papers from arXiv API and NASA ADS API.
+Fetches new papers from arXiv API and Semantic Scholar API.
 """
 import asyncio
 import logging
-import os
+
 from datetime import date, timedelta
 from typing import Any
 
@@ -20,22 +20,7 @@ ARXIV_CATEGORIES = [
     "nucl-th",
 ]
 
-ADS_JOURNALS = [
-    "The Astrophysical Journal",
-    "The Astrophysical Journal Letters",
-    "Journal of Geophysical Research Space Physics",
-    "Geophysical Research Letters",
-    "Monthly Notices of the Royal Astronomical Society",
-    "Astronomy and Astrophysics",
-    "Solar Physics",
-    "Physics of Plasmas",
-    "Journal of Plasma Physics",
-    "Nuclear Fusion",
-    "Physical Review Letters",
-    "Physical Review E",
-    "Plasma Physics and Controlled Fusion",
-    "Advances in Space Research",
-]
+
 
 PLASMA_KEYWORDS = [
     "plasma", "tokamak", "stellarator", "fusion", "magnetic reconnection",
@@ -118,85 +103,86 @@ async def fetch_arxiv(target_date: date | None = None) -> list[dict[str, Any]]:
     return papers
 
 
-async def fetch_nasa_ads(target_date: date | None = None) -> list[dict[str, Any]]:
-    """Fetch papers from NASA ADS for a given date."""
-    token = os.environ.get("NASA_ADS_TOKEN")
-    if not token:
-        logger.warning("NASA_ADS_TOKEN not set — skipping NASA ADS fetch")
-        return []
-
+async def fetch_semantic_scholar(target_date: date | None = None) -> list[dict[str, Any]]:
+    """Fetch papers from Semantic Scholar for plasma physics."""
     if target_date is None:
         target_date = date.today() - timedelta(days=1)
-    date_str = target_date.strftime("%Y-%m-%d")
-
+    
     papers: list[dict] = []
-    headers = {"Authorization": f"Bearer {token}"}
-
+    
     async with httpx.AsyncClient(timeout=60) as client:
-        for journal in ADS_JOURNALS:
-            query = f'pub:"{journal}" pubdate:[{date_str} TO {date_str}]'
-            params = {
-                "q": query,
-                "fl": "title,author,abstract,identifier,pubdate,doi,bibcode,pub",
-                "rows": 50,
-                "sort": "date desc",
-            }
-            try:
-                r = await client.get(
-                    "https://api.adsabs.harvard.edu/v1/search/query",
-                    headers=headers,
-                    params=params,
-                )
-                r.raise_for_status()
-                docs = r.json().get("response", {}).get("docs", [])
+        url = "https://api.semanticscholar.org/graph/v1/paper/search"
+        params = {
+            "query": "plasma physics tokamak",
+            "fields": "paperId,title,abstract,year,authors,publicationDate,externalIds,openAccessPdf",
+            "limit": 100,
+            "offset": 0
+        }
+        try:
+            r = await client.get(url, params=params)
+            r.raise_for_status()
+            data = r.json()
+            docs = data.get("data", [])
 
-                for doc in docs:
-                    title = doc.get("title", [""])[0] if doc.get("title") else ""
-                    abstract = doc.get("abstract", "")
-                    if not abstract or not _is_plasma_relevant(title, abstract):
-                        continue
+            for doc in docs:
+                title = doc.get("title", "")
+                abstract = doc.get("abstract", "")
+                if not abstract or not _is_plasma_relevant(title, abstract):
+                    continue
 
-                    doi = None
-                    for ident in doc.get("identifier", []):
-                        if ident.startswith("10."):
-                            doi = ident
-                            break
+                pub_date_str = doc.get("publicationDate")
+                if pub_date_str:
+                    try:
+                        pub_date = date.fromisoformat(pub_date_str)
+                        if pub_date < target_date - timedelta(days=7):
+                            continue # Skip very old papers
+                    except Exception:
+                        pass
 
-                    bibcode = doc.get("bibcode", "")
-                    papers.append({
-                        "arxiv_id": None,
-                        "doi": doi,
-                        "title": title,
-                        "authors": doc.get("author", []),
-                        "abstract": abstract,
-                        "journal": doc.get("pub", journal),
-                        "published_date": target_date,
-                        "pdf_url": f"https://ui.adsabs.harvard.edu/link_gateway/{bibcode}/ESOURCE" if bibcode else None,
-                        "paper_url": f"https://ui.adsabs.harvard.edu/abs/{bibcode}" if bibcode else None,
-                        "source": "ads",
-                    })
+                authors = [a.get("name", "") for a in doc.get("authors", [])]
+                paperId = doc.get("paperId", "")
+                
+                pdf_url = None
+                open_access = doc.get("openAccessPdf")
+                if open_access and isinstance(open_access, dict):
+                    pdf_url = open_access.get("url")
+                
+                doi = doc.get("externalIds", {}).get("DOI")
 
-            except Exception as e:
-                logger.error(f"NASA ADS fetch failed for {journal}: {e}")
+                papers.append({
+                    "arxiv_id": None,
+                    "doi": doi,
+                    "title": title,
+                    "authors": authors,
+                    "abstract": abstract,
+                    "journal": "Semantic Scholar",
+                    "published_date": target_date,
+                    "pdf_url": pdf_url,
+                    "paper_url": f"https://www.semanticscholar.org/paper/{paperId}" if paperId else None,
+                    "source": "semanticscholar",
+                })
 
-            await asyncio.sleep(0.3)
+        except Exception as e:
+            logger.error(f"Semantic Scholar fetch failed: {e}")
 
-    logger.info(f"NASA ADS: fetched {len(papers)} papers for {date_str}")
+        await asyncio.sleep(0.3)
+
+    logger.info(f"Semantic Scholar: fetched {len(papers)} papers")
     return papers
 
 
 async def fetch_all(target_date: date | None = None) -> list[dict[str, Any]]:
     """Fetch from all sources and deduplicate."""
-    arxiv_papers, ads_papers = await asyncio.gather(
+    arxiv_papers, ss_papers = await asyncio.gather(
         fetch_arxiv(target_date),
-        fetch_nasa_ads(target_date),
+        fetch_semantic_scholar(target_date),
     )
 
     # Deduplicate by title similarity (simple exact-title dedup)
     seen_titles: set[str] = set()
     all_papers: list[dict] = []
 
-    for paper in arxiv_papers + ads_papers:
+    for paper in arxiv_papers + ss_papers:
         title_key = paper["title"].lower().strip()[:80]
         if title_key not in seen_titles:
             seen_titles.add(title_key)

@@ -42,7 +42,7 @@ async def process_single_paper(paper: dict, db) -> bool:
         logger.debug(f"Skipping duplicate: {title_short}")
         return False
 
-    # 2. Analyze with Claude
+    # 2. Analyze with Gemini
     logger.info(f"Analyzing: {title_short}")
     analysis = await analyze_paper(paper)
     if not analysis:
@@ -116,7 +116,7 @@ async def process_single_paper(paper: dict, db) -> bool:
     await append_to_review(db, paper, analysis)
 
     # 6. Extract open problems
-    problems = await extract_open_problems(analysis)
+    problems = await extract_open_problems(paper, analysis)
     if problems:
         await save_open_problems(db, str(db_paper.id), problems, paper["published_date"])
 

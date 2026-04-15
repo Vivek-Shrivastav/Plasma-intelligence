@@ -2,19 +2,15 @@
 Manages the living literature reviews per subfield.
 Append-only: historical backbone written once, daily patches appended.
 """
-import json
+import asyncio
 import logging
-import os
-from datetime import date
 from typing import Any
 
-from groq import AsyncGroq
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from tenacity import retry, stop_after_attempt, wait_exponential
 
 from models.lit_review import LiteratureReview
-from prompts import LIT_PATCH_PROMPT, LIT_SEED_PROMPT_TEMPLATE
+import gemini_client
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +35,6 @@ SUBFIELD_DISPLAY_NAMES = {
     "diagnostics": "Plasma Diagnostics",
 }
 
-
 async def get_or_create_review(db: AsyncSession, subfield: str) -> LiteratureReview:
     result = await db.execute(
         select(LiteratureReview).where(LiteratureReview.subfield == subfield)
@@ -56,8 +51,6 @@ async def get_or_create_review(db: AsyncSession, subfield: str) -> LiteratureRev
         await db.flush()
     return review
 
-
-@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=2, min=4, max=20))
 async def generate_patch(
     subfield: str,
     paper: dict[str, Any],
@@ -65,36 +58,25 @@ async def generate_patch(
     existing_tail: str,
 ) -> str:
     """Generate a patch paragraph to append to a literature review."""
-    client = anthropic.AsyncAnthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
-
     year = str(paper.get("published_date", ""))[:4]
-    first_author = paper.get("authors", ["Unknown"])[0].split(",")[0]
-    citation = f"({first_author}{year})"
+    paper_summary = analysis.get("short_summary", analysis.get("summary", ""))
+    
+    # gemini_client expects new_papers: list[dict]
+    new_paper_dict = {
+        "title": paper["title"],
+        "summary": paper_summary
+    }
 
-    user_content = f"""SUBFIELD: {subfield}
-
-CURRENT REVIEW (last section, for continuity):
-{existing_tail[-2500:] if existing_tail else "(No content yet — this is the first entry)"}
-
-NEW PAPER:
-Title: {paper['title']}
-Authors: {', '.join(paper.get('authors', [])[:5])} {year}
-Citation key: {citation}
-Field: {analysis.get('field', '')}
-Short summary: {analysis.get('short_summary', '')}
-Key contributions: {json.dumps(analysis.get('key_contributions', []))}
-Methods: {json.dumps(analysis.get('methods_used', []))}
-Open problems: {json.dumps(analysis.get('open_problems', []))}
-Positioning: {analysis.get('literature_context', {}).get('positioning', '')}"""
-
-    message = await client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=500,
-        system=LIT_PATCH_PROMPT,
-        messages=[{"role": "user", "content": user_content}],
-    )
-    return message.content[0].text.strip()
-
+    try:
+        return await asyncio.to_thread(
+            gemini_client.generate_literature_review_patch,
+            subfield=subfield,
+            new_papers=[new_paper_dict],
+            existing_review=existing_tail
+        )
+    except Exception as e:
+        logger.error(f"Gemini API lit review patch failed: {e}")
+        return ""
 
 async def append_to_review(
     db: AsyncSession,
@@ -139,27 +121,24 @@ async def append_to_review(
         except Exception as e:
             logger.error(f"Failed to append to {subfield} lit review: {e}")
 
-
-async def seed_review(db: AsyncSession, subfield: str) -> str:
+async def seed_review(db: AsyncSession, subfield: str, founding_papers: list[dict] = None) -> str:
     """
     Generate the full historical literature review for a subfield.
-    Run once per subfield via scripts/seed_literature.py.
     """
-    client = anthropic.AsyncAnthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    if founding_papers is None:
+        founding_papers = []
+
     display = SUBFIELD_DISPLAY_NAMES.get(subfield, subfield)
 
-    prompt = LIT_SEED_PROMPT_TEMPLATE.format(
-        subfield=display,
-        subfield_title=display,
-        today=date.today().isoformat(),
-    )
-
-    message = await client.messages.create(
-        model="claude-opus-4-5",
-        max_tokens=4000,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    content = message.content[0].text.strip()
+    try:
+        content = await asyncio.to_thread(
+            gemini_client.seed_literature_review,
+            subfield=display,
+            founding_papers=founding_papers
+        )
+    except Exception as e:
+        logger.error(f"Gemini API seed lit review failed: {e}")
+        content = ""
 
     review = await get_or_create_review(db, subfield)
     review.content_markdown = content

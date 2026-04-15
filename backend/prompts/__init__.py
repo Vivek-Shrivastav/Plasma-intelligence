@@ -2,7 +2,7 @@
 All AI prompts used by the Plasma Intelligence Platform.
 """
 
-# ── Paper Analysis (Daily, Claude Sonnet) ────────────────────────────────────
+# ── Paper Analysis (Daily, Gemini 2.0 Flash) ────────────────────────────────────
 
 PAPER_ANALYSIS_PROMPT = """You are an expert plasma physicist, scientific reviewer, and technical editor building content for an automated plasma physics research intelligence platform.
 
@@ -40,7 +40,7 @@ Rules:
 - Return ONLY valid JSON"""
 
 
-# ── Literature Review Patch (Daily, Claude Sonnet) ────────────────────────────
+# ── Literature Review Patch (Daily, Gemini 2.0 Flash) ────────────────────────────
 
 LIT_PATCH_PROMPT = """You are a plasma physics historian and technical writer maintaining a living, authoritative literature review for the plasma physics research community.
 
@@ -62,7 +62,7 @@ Write a SHORT PATCH to append to the "Recent Developments" section. Requirements
 Return only the patch text. No preamble."""
 
 
-# ── Historical Literature Review Seed (One-time, Claude Opus) ────────────────
+# ── Historical Literature Review Seed (One-time, Gemini 2.0 Flash) ────────────────
 
 LIT_SEED_PROMPT_TEMPLATE = """You are a plasma physicist and science historian writing the definitive authoritative literature review for the subfield of **{subfield}** within plasma physics.
 
@@ -99,7 +99,7 @@ Requirements:
 - Be scientifically accurate"""
 
 
-# ── Open Problems Extraction (Daily, Claude Sonnet) ───────────────────────────
+# ── Open Problems Extraction (Daily, Gemini 2.0 Flash) ───────────────────────────
 
 OPEN_PROBLEMS_PROMPT = """You are a research gap analyst specializing in plasma physics.
 
@@ -121,7 +121,7 @@ Rules:
 - Return ONLY the JSON array"""
 
 
-# ── Weekly Open Problems Synthesis (Weekly, Claude Opus) ─────────────────────
+# ── Weekly Open Problems Synthesis (Weekly, Gemini 2.0 Flash) ─────────────────────
 
 OPEN_PROBLEMS_SYNTHESIS_PROMPT = """You are a plasma physics research strategist synthesizing the landscape of open problems.
 
@@ -149,7 +149,7 @@ Return JSON:
 Order clusters from most to least urgent. Return ONLY the JSON."""
 
 
-# ── Figure Description (Daily, Claude Sonnet Vision) ─────────────────────────
+# ── Figure Description (Daily, Gemini 2.0 Flash Vision) ─────────────────────────
 
 FIGURE_DESCRIPTION_PROMPT = """You are a plasma physics expert analyzing a scientific figure.
 
@@ -162,7 +162,7 @@ Describe this figure for a physics-literate reader. Your description must:
 60-120 words. Technical accuracy required. Do not say "the figure shows" — describe directly."""
 
 
-# ── Subfield Summary Update (Weekly, Claude Sonnet) ──────────────────────────
+# ── Subfield Summary Update (Weekly, Gemini 2.0 Flash) ──────────────────────────
 
 SUBFIELD_SUMMARY_PROMPT = """You are a plasma physics science communicator.
 

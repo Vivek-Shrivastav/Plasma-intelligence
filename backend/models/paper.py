@@ -21,7 +21,7 @@ class Paper(Base):
         TIMESTAMP(timezone=True), server_default=func.now()
     )
 
-    # Full Claude analysis (raw JSON blob)
+    # Full Gemini analysis (raw JSON blob)
     analysis: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     # Derived/indexed fields for fast queries

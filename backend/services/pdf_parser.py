@@ -18,6 +18,14 @@ MIN_FIGURE_WIDTH = 200
 MIN_FIGURE_HEIGHT = 150
 MIN_FIGURE_AREA = 40_000
 
+# Optional dependency: PyMuPDF
+try:
+    import fitz  # PyMuPDF
+    HAS_FITZ = True
+except ImportError:
+    HAS_FITZ = False
+    logger.info("PyMuPDF not installed — figure extraction will be skipped")
+
 
 async def download_pdf(pdf_url: str, arxiv_id: str) -> Path | None:
     """Download a PDF to the tmp directory. Returns path or None."""
@@ -40,9 +48,7 @@ def extract_figures_from_pdf(pdf_path: Path) -> list[dict[str, Any]]:
     Extract figures from a PDF using PyMuPDF.
     Returns list of dicts with 'data' (PNG bytes), 'page', 'index'.
     """
-    try:
-        # import fitz  # PyMuPDF removed  # PyMuPDF
-    except ImportError:
+    if not HAS_FITZ:
         logger.warning("PyMuPDF not installed — skipping figure extraction")
         return []
 

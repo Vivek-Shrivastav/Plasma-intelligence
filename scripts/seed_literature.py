@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 One-time script: generate historical literature reviews for all subfields.
-Uses Claude Opus — run once, costs ~$5-8 total.
+Uses Gemini 2.0 Flash (free tier) — run once, ~20-25 minutes total.
 
 Usage:
     cd backend
@@ -10,8 +10,8 @@ Usage:
 """
 import asyncio
 import argparse
-import os
 import sys
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
@@ -37,12 +37,12 @@ async def main(target_subfield: str | None = None):
     async with AsyncSessionLocal() as db:
         for i, subfield in enumerate(subfields, 1):
             display = SUBFIELD_DISPLAY_NAMES.get(subfield, subfield)
-            print(f"[{i}/{len(subfields)}] Seeding: {display}")
+            print(f"Seeding subfield {i} of {len(subfields)}: {display}...")
             try:
                 content = await seed_review(db, subfield)
                 await db.commit()
                 print(f"  ✓ {len(content)} characters written\n")
-                await asyncio.sleep(3)  # avoid rate limits
+                time.sleep(5)  # respect rate limits between subfields
             except Exception as e:
                 print(f"  ✗ Failed: {e}\n")
                 await db.rollback()

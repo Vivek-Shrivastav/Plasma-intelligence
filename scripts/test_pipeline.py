@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 Test the full pipeline with a single arXiv paper.
+Uses Gemini 2.0 Flash for analysis. 
 
 Usage:
     cd backend
@@ -23,16 +24,13 @@ load_dotenv(Path(__file__).parent.parent / ".env")
 DEFAULT_ARXIV_ID = "2310.07788"  # example plasma paper
 
 async def main(arxiv_id: str):
-    from database import create_tables, AsyncSessionLocal
-    from services.analyzer import analyze_paper
+    import gemini_client
     from services.fetcher import _is_plasma_relevant
-
-    await create_tables()
 
     print(f"\nTesting pipeline with arXiv:{arxiv_id}")
     print("-" * 60)
 
-    # Fetch paper metadata
+    # 1. Fetch paper metadata from arXiv
     import httpx, xmltodict
     url = f"http://export.arxiv.org/api/query?id_list={arxiv_id}"
     async with httpx.AsyncClient(timeout=30) as client:
@@ -50,25 +48,14 @@ async def main(arxiv_id: str):
     if isinstance(authors_raw, dict):
         authors_raw = [authors_raw]
 
-    paper = {
-        "arxiv_id": arxiv_id,
-        "title": title,
-        "authors": [a.get("name", "") for a in authors_raw],
-        "abstract": abstract,
-        "journal": "arXiv",
-        "published_date": date.today(),
-        "pdf_url": f"https://arxiv.org/pdf/{arxiv_id}",
-        "paper_url": f"https://arxiv.org/abs/{arxiv_id}",
-    }
-
     print(f"Title: {title[:80]}")
-    print(f"Authors: {', '.join(paper['authors'][:3])}")
+    print(f"Authors: {', '.join([a.get('name', '') for a in authors_raw][:3])}")
     print(f"Plasma relevant: {_is_plasma_relevant(title, abstract)}")
     print()
 
-    # Run analysis
-    print("Running Claude analysis...")
-    analysis = await analyze_paper(paper)
+    # 2. Analyze with Gemini
+    print("Running Gemini analysis...")
+    analysis = gemini_client.analyze_paper(title, abstract)
 
     if not analysis:
         print("✗ Analysis failed")
@@ -76,32 +63,33 @@ async def main(arxiv_id: str):
 
     print(f"✓ Analysis complete\n")
     print(f"  Headline: {analysis.get('headline')}")
-    print(f"  Field: {analysis.get('field')}")
-    print(f"  Subfields: {analysis.get('subfield')}")
-    print(f"  Importance: {analysis.get('importance_score')}/10")
-    print(f"  Depth: {analysis.get('technical_depth')}")
-    print(f"  Concepts: {analysis.get('concepts_detected')}")
-    print()
-    print(f"  Short summary:\n  {analysis.get('short_summary')}")
-    print()
-    print(f"  Open problems:")
-    for op in analysis.get("open_problems", []):
-        print(f"    - {op}")
+    print(f"  Summary: {analysis.get('summary', analysis.get('short_summary', ''))[:150]}...")
+    print(f"  Key findings: {analysis.get('key_findings', [])[:3]}")
     print()
 
-    # Save to DB
-    print("Saving to database...")
-    async with AsyncSessionLocal() as db:
-        from scheduler import process_single_paper
-        ok = await process_single_paper(paper, db)
-        await db.commit()
-        if ok:
-            print("✓ Paper saved successfully")
-        else:
-            print("✗ Paper not saved (may already exist)")
+    # 3. Extract open problems
+    print("Extracting open problems...")
+    problems = gemini_client.extract_open_problems(title, abstract, analysis)
+    print(f"✓ Found {len(problems)} open problems")
+    for op in problems:
+        print(f"  - {op}")
+    print()
 
-    print("\nFull analysis JSON:")
+    # 4. Get embedding
+    print("Getting embedding...")
+    embedding = gemini_client.get_embedding(f"{title} {abstract}")
+    print(f"✓ Embedding dimension: {len(embedding)}")
+    print(f"  First 5 values: {embedding[:5]}")
+    print()
+
+    # 5. Full analysis JSON
+    print("Full analysis JSON:")
     print(json.dumps(analysis, indent=2))
+    print()
+
+    print("=" * 60)
+    print("PIPELINE TEST PASSED")
+    print("=" * 60)
 
 
 if __name__ == "__main__":

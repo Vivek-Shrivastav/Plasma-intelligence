@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
 Backfill script: fetch and process papers from the past N months.
+Uses Gemini 2.0 Flash (free tier) for analysis.
 Run once after initial deployment.
 
 Usage:
     cd backend
-    python ../scripts/backfill.py --months 6
+    python ../scripts/backfill.py --months 3
     python ../scripts/backfill.py --months 1 --start-date 2025-03-01
 """
 import asyncio
@@ -48,10 +49,12 @@ async def main(months: int, start_date_str: str | None = None):
 
             async with AsyncSessionLocal() as db:
                 day_count = 0
-                for paper in papers:
+                for j, paper in enumerate(papers):
                     ok = await process_single_paper(paper, db)
                     if ok:
                         day_count += 1
+                    if (j + 1) % 10 == 0:
+                        print(f"    Progress: {j+1}/{len(papers)} papers processed")
                     await asyncio.sleep(0.5)
                 await db.commit()
                 total_processed += day_count
@@ -68,7 +71,7 @@ async def main(months: int, start_date_str: str | None = None):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--months", type=int, default=1)
+    parser.add_argument("--months", type=int, default=3)
     parser.add_argument("--start-date", help="YYYY-MM-DD")
     args = parser.parse_args()
     asyncio.run(main(args.months, args.start_date))

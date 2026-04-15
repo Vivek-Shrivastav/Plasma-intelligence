@@ -1,18 +1,17 @@
 """
 Extracts and clusters open problems from analyzed papers.
 """
+import asyncio
 import json
 import logging
-import os
 from datetime import date
 from typing import Any
 
-from groq import AsyncGroq
-from sqlalchemy import select, func
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.open_problem import OpenProblem, OpenProblemCluster
-from prompts import OPEN_PROBLEMS_SYNTHESIS_PROMPT
+import gemini_client
 
 logger = logging.getLogger(__name__)
 
@@ -20,45 +19,39 @@ logger = logging.getLogger(__name__)
 async def save_open_problems(
     db: AsyncSession,
     paper_id: str,
-    problems: list[dict[str, Any]],
+    problems: list,
     published_date: date,
 ):
     """Save extracted open problems to database."""
     for prob in problems:
-        op = OpenProblem(
-            paper_id=paper_id,
-            description=prob.get("problem", ""),
-            subfields=prob.get("subfields", []),
-            specificity=prob.get("specificity", "medium"),
-            evidence=prob.get("evidence", ""),
-        )
+        if isinstance(prob, str):
+            # gemini_client returns list[str]
+            op = OpenProblem(
+                paper_id=paper_id,
+                description=prob,
+                subfields=[],
+                specificity="medium",
+                evidence="",
+            )
+        else:
+            # dict format
+            op = OpenProblem(
+                paper_id=paper_id,
+                description=prob.get("problem", ""),
+                subfields=prob.get("subfields", []),
+                specificity=prob.get("specificity", "medium"),
+                evidence=prob.get("evidence", ""),
+            )
         db.add(op)
     await db.flush()
 
 
 async def synthesize_clusters(db: AsyncSession):
     """
-    Weekly job: re-cluster all open problems using Claude Opus.
+    Weekly job: re-cluster all open problems using Gemini.
     Replaces the existing clusters table.
     """
-    client = anthropic.AsyncAnthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
-
-    # Fetch recent open problems (last 90 days)
-    from datetime import timedelta
-    cutoff = date.today() - timedelta(days=90)
-
-    result = await db.execute(
-        select(OpenProblem, func.count(OpenProblem.id))
-        .join(
-            # join with papers to get published date
-            __import__("models.paper", fromlist=["Paper"]).Paper,
-            OpenProblem.paper_id == __import__("models.paper", fromlist=["Paper"]).Paper.id,
-        )
-        .group_by(OpenProblem.description)
-        .limit(200)
-    )
-
-    # Simpler: just fetch all open problems
+    # Fetch recent open problems
     result = await db.execute(select(OpenProblem).limit(300))
     problems = result.scalars().all()
 
@@ -79,18 +72,45 @@ async def synthesize_clusters(db: AsyncSession):
     user_content = f"Open problems from recent plasma physics papers:\n\n{json.dumps(problem_list, indent=2)}"
 
     try:
-        message = await client.messages.create(
-            model="claude-opus-4-5",
-            max_tokens=3000,
-            system=OPEN_PROBLEMS_SYNTHESIS_PROMPT,
-            messages=[{"role": "user", "content": user_content}],
-        )
-        raw = message.content[0].text.strip()
+        from google.generativeai import GenerativeModel
+        import time
+
+        time.sleep(4.1)
+        model = GenerativeModel("gemini-2.0-flash")
+
+        prompt = f"""You are a plasma physics research strategist synthesizing the landscape of open problems.
+
+You will receive a list of open problems extracted from recent papers. Each has a description, subfields, and occurrence count.
+
+Your task:
+1. GROUP similar problems into THEMES
+2. For each theme write a synthesis
+
+Return JSON:
+{{
+  "clusters": [
+    {{
+      "theme": "<short name, max 8 words>",
+      "description": "<2-3 precise sentences about why this is hard and what solving it would unlock>",
+      "subfields": ["<list>"],
+      "urgency": "<high | medium | low>",
+      "paper_count": <int>,
+      "first_seen": "<YYYY-MM>",
+      "last_seen": "<YYYY-MM>"
+    }}
+  ]
+}}
+
+Order clusters from most to least urgent. Return ONLY the JSON.
+
+{user_content}"""
+
+        resp = await asyncio.to_thread(model.generate_content, prompt)
+        raw = resp.text.strip()
         raw = raw.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
         data = json.loads(raw)
 
         # Clear old clusters and save new ones
-        from sqlalchemy import delete
         await db.execute(delete(OpenProblemCluster))
 
         for cluster in data.get("clusters", []):
