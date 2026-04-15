@@ -3,7 +3,7 @@ import { URGENCY_COLORS } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 
-export const revalidate = 3600;
+export const dynamic = "force-dynamic";
 
 export default async function OpenProblemsPage() {
   let data: Awaited<ReturnType<typeof api.openProblems.clusters>> | null = null;

@@ -3,7 +3,7 @@ import { formatDate } from "@/lib/utils";
 import PaperCard from "@/components/PaperCard";
 import Link from "next/link";
 
-export const revalidate = 300; // refresh every 5 min
+export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   let data: Awaited<ReturnType<typeof api.papers.today>> | null = null;
