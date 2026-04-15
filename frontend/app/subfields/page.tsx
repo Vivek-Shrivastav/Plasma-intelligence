@@ -86,29 +86,32 @@ export default async function SubfieldsPage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {items.map(sf => (
-                <Link key={sf.slug} href={`/subfields/${sf.slug}`}
-                  className="group bg-white border border-gray-200 rounded-xl p-5 hover:border-blue-300 hover:shadow-sm transition-all">
+                <div key={sf.slug}
+                  className="group bg-white border border-gray-200 rounded-xl p-5 hover:border-blue-300 hover:shadow-sm transition-all flex flex-col justify-between">
                   <div className="flex items-start gap-3">
                     <span className="text-2xl shrink-0 mt-0.5">{SUBFIELD_ICONS[sf.slug] ?? "·"}</span>
                     <div>
-                      <h3 className="headline-serif text-base text-gray-900 group-hover:text-blue-800 transition-colors mb-1">
-                        {sf.name}
-                      </h3>
+                      <Link href={`/subfields/${sf.slug}`}>
+                        <h3 className="headline-serif text-base text-gray-900 group-hover:text-blue-800 transition-colors mb-1 hover:underline">
+                          {sf.name}
+                        </h3>
+                      </Link>
                       <p className="text-xs font-sans text-gray-500 leading-relaxed">
                         {SUBFIELD_DESCRIPTIONS[sf.slug] ?? ""}
                       </p>
                     </div>
                   </div>
                   <div className="mt-3 pt-3 border-t border-gray-100 flex gap-3">
-                    <span className="text-xs font-sans text-blue-600 group-hover:underline">Papers →</span>
+                    <Link href={`/subfields/${sf.slug}`} className="text-xs font-sans text-blue-600 hover:underline">
+                      Papers →
+                    </Link>
                     <span className="text-xs font-sans text-gray-400">|</span>
                     <Link href={`/subfields/${sf.slug}/literature`}
-                      className="text-xs font-sans text-purple-600 hover:underline"
-                      onClick={e => e.stopPropagation()}>
+                      className="text-xs font-sans text-purple-600 hover:underline">
                       Literature review →
                     </Link>
                   </div>
-                </Link>
+                </div>
               ))}
             </div>
           </div>

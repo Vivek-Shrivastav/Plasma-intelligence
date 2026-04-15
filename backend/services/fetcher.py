@@ -50,7 +50,7 @@ async def fetch_arxiv(target_date: date | None = None) -> list[dict[str, Any]]:
                 f"cat:{category}+AND+submittedDate:[{date_str}0000+TO+{date_str}2359]"
             )
             url = (
-                f"http://export.arxiv.org/api/query"
+                f"https://export.arxiv.org/api/query"
                 f"?search_query={query}&start=0&max_results=100"
                 f"&sortBy=submittedDate&sortOrder=descending"
             )

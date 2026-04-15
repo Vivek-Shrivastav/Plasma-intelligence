@@ -55,7 +55,7 @@ async def get_today(db: AsyncSession = Depends(get_db)):
         .order_by(desc(Paper.importance_score))
     )
     papers = result.scalars().all()
-    return {"date": yesterday.isoformat(), "papers": [paper_to_dict(p) for p in papers]}
+    return {"date": date.today().isoformat(), "papers": [paper_to_dict(p) for p in papers]}
 
 
 @router.get("/date/{date_str}")
