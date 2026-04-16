@@ -28,6 +28,8 @@ PLASMA_KEYWORDS = [
     "magnetohydrodynamic", "MHD", "kinetic", "instability", "turbulence",
     "solar wind", "magnetosphere", "accretion disk", "shock", "alfven",
     "two-stream", "drift wave", "confinement", "heating", "transport",
+    "coronal", "corona", "ionosphere", "space weather", "astrophysical",
+    "ITER", "tokamaks", "magnetized", "sheath", "glow discharge",
 ]
 
 
