@@ -29,10 +29,10 @@ INTER_CALL_SLEEP = 4.1   # seconds between calls to stay under 15 RPM
 # ── Retry decorator for rate limit errors ──────────────────────────
 gemini_retry = retry(
     retry=retry_if_exception_type(ResourceExhausted),
-    wait=wait_exponential(multiplier=2, min=60, max=300),
-    stop=stop_after_attempt(5),
+    wait=wait_exponential(multiplier=2, min=60, max=600), # wait up to 10 mins
+    stop=stop_after_attempt(10), # try 10 times
     before_sleep=lambda rs: logger.warning(
-        f"Rate limited. Waiting {rs.next_action.sleep:.0f}s...")
+        f"Rate limited (ResourceExhausted). Waiting {rs.next_action.sleep:.0f}s...")
 )
 
 @gemini_retry
@@ -184,7 +184,7 @@ def analyze_papers_batch(papers: list[dict]) -> list[dict]:
     Returns list of papers with analysis added.
     """
     results = []
-    batch_size = 10
+    batch_size = 5 # Reduced from 10 to be even safer
     for i in range(0, len(papers), batch_size):
         batch = papers[i:i+batch_size]
         logger.info(f"Processing batch {i//batch_size + 1} of "

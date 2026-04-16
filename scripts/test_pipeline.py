@@ -32,7 +32,7 @@ async def main(arxiv_id: str):
 
     # 1. Fetch paper metadata from arXiv
     import httpx, xmltodict
-    url = f"http://export.arxiv.org/api/query?id_list={arxiv_id}"
+    url = f"https://export.arxiv.org/api/query?id_list={arxiv_id}"
     async with httpx.AsyncClient(timeout=30) as client:
         r = await client.get(url)
     data = xmltodict.parse(r.text)

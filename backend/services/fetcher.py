@@ -9,6 +9,7 @@ from typing import Any
 
 import httpx
 import xmltodict
+from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
 
 logger = logging.getLogger(__name__)
 
@@ -103,8 +104,21 @@ async def fetch_arxiv(target_date: date | None = None) -> list[dict[str, Any]]:
     return papers
 
 
+@retry(
+    retry=retry_if_exception_type(httpx.HTTPStatusError),
+    wait=wait_exponential(multiplier=2, min=60, max=600),
+    stop=stop_after_attempt(5),
+    before_sleep=lambda rs: logger.warning(f"Semantic Scholar rate limited (429). Waiting {rs.next_action.sleep:.0f}s...")
+)
+async def _fetch_ss_batch(client: httpx.AsyncClient, url: str, params: dict) -> dict:
+    r = await client.get(url, params=params)
+    r.raise_for_status()
+    return r.json()
+
+
 async def fetch_semantic_scholar(target_date: date | None = None) -> list[dict[str, Any]]:
     """Fetch papers from Semantic Scholar for plasma physics."""
+    from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
     if target_date is None:
         target_date = date.today() - timedelta(days=1)
     
@@ -119,9 +133,8 @@ async def fetch_semantic_scholar(target_date: date | None = None) -> list[dict[s
             "offset": 0
         }
         try:
-            r = await client.get(url, params=params)
-            r.raise_for_status()
-            data = r.json()
+            # Using the retrying helper
+            data = await _fetch_ss_batch(client, url, params)
             docs = data.get("data", [])
 
             for doc in docs:

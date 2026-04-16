@@ -50,12 +50,16 @@ async def main(months: int, start_date_str: str | None = None):
             async with AsyncSessionLocal() as db:
                 day_count = 0
                 for j, paper in enumerate(papers):
-                    ok = await process_single_paper(paper, db)
-                    if ok:
-                        day_count += 1
-                    if (j + 1) % 10 == 0:
-                        print(f"    Progress: {j+1}/{len(papers)} papers processed")
-                    await asyncio.sleep(0.5)
+                    try:
+                        ok = await process_single_paper(paper, db)
+                        if ok:
+                            day_count += 1
+                        if (j + 1) % 5 == 0:
+                            print(f"    Progress: {j+1}/{len(papers)} papers processed")
+                        await asyncio.sleep(4.5) # Gentle pace (13 RPM)
+                    except Exception as e:
+                        print(f"    ! Error processing paper: {e}")
+                        continue
                 await db.commit()
                 total_processed += day_count
                 print(f"    → processed {day_count}/{len(papers)}")
