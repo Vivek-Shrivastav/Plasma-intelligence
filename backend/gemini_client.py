@@ -48,12 +48,15 @@ def analyze_paper(title: str, abstract: str, full_text: str = "") -> dict:
 Analyze this paper and return a JSON object with these exact keys:
 {{
   "headline": "one punchy newspaper headline (max 12 words)",
-  "summary": "2-3 sentence plain-language summary for a general physics audience",
-  "key_findings": ["finding 1", "finding 2", "finding 3"],
+  "short_summary": "2-3 sentence plain-language summary for a physics audience",
+  "field": "The general field (e.g., Plasma Physics, Astrophysics, Fusion Energy)",
+  "subfield": ["specific subfield 1", "specific subfield 2"],
+  "importance_score": 1-100 (integer score of how groundbreaking this is),
+  "technical_depth": "one word: low, medium, or high",
+  "keywords": ["key concept 1", "key concept 2", "key concept 3"],
+  "concepts_detected": ["List 3-5 specific physics concepts mentioned"],
   "methodology": "one sentence describing the method used",
-  "significance": "one sentence on why this matters to the field",
-  "open_questions": ["question raised by this paper 1", "question 2"],
-  "subfield_tags": ["tag1", "tag2"]  
+  "significance": "one sentence on why this matters to the field"
 }}
 
 Only return valid JSON. No markdown, no backticks, no extra text.
